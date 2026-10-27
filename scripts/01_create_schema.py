@@ -127,6 +127,45 @@ AS $$
   ORDER BY sentence_embeddings.embedding <=> query_embedding
   LIMIT match_count;
 $$;
+
+-- Similarity search limited to one speaker (custom feature: "Ask a specific speaker")
+-- Speaker names are stored like "By President Russell M. Nelson" with a non-breaking space,
+-- so match on a normalized substring. OFFSET 0 keeps the filter ahead of the ORDER BY:
+-- an exact scan of one speaker's sentences, instead of the HNSW index, which would
+-- filter only after its approximate top-k search and return too few rows.
+CREATE OR REPLACE FUNCTION match_sentences_by_speaker(
+  query_embedding vector(1536),
+  speaker_name text,
+  match_count int DEFAULT 20
+)
+RETURNS TABLE (
+  id uuid,
+  talk_id uuid,
+  title text,
+  speaker text,
+  url text,
+  text text,
+  similarity float
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT
+    s.id,
+    s.talk_id,
+    s.title,
+    s.speaker,
+    s.url,
+    s.text,
+    1 - (s.embedding <=> query_embedding) as similarity
+  FROM (
+    SELECT *
+    FROM sentence_embeddings
+    WHERE replace(sentence_embeddings.speaker, chr(160), ' ') ILIKE '%' || speaker_name || '%'
+    OFFSET 0
+  ) s
+  ORDER BY s.embedding <=> query_embedding
+  LIMIT match_count;
+$$;
 """
 
     url = f"https://api.supabase.com/v1/projects/{SUPABASE_PROJECT_REF}/database/query"

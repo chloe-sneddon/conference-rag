@@ -526,7 +526,19 @@ input:focus {
     flex: 1;
 }
 
+.panel-input select {
+    padding: var(--spacing-sm);
+    background: var(--surface);
+    border: 2px solid var(--surface-light);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1rem;
+    max-width: 12rem;
+}
+
 .panel-input input:disabled,
+.panel-input select:disabled,
 .panel-input button:disabled {
     opacity: 0.4;
     cursor: not-allowed;
@@ -760,5 +772,9 @@ input:focus {
 
     .panel-input {
         flex-direction: column;
+    }
+
+    .panel-input select {
+        max-width: none;
     }
 }

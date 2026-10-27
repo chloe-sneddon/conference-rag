@@ -81,6 +81,7 @@ const semanticStatus = document.getElementById('semantic-status');
 
 const ragInput = document.getElementById('rag-input');
 const ragBtn = document.getElementById('rag-btn');
+const ragSpeaker = document.getElementById('rag-speaker');
 const ragResults = document.getElementById('rag-results');
 const ragStatus = document.getElementById('rag-status');
 
@@ -391,6 +392,7 @@ function setSearchReady(type, ready) {
 
     if (inputEl) inputEl.disabled = !ready;
     if (btnEl) btnEl.disabled = !ready;
+    if (type === 'rag' && ragSpeaker) ragSpeaker.disabled = !ready;
 
     if (panelEl) {
         if (ready) {
@@ -521,6 +523,7 @@ async function semanticSearch() {
 
 async function askQuestion() {
     const question = ragInput ? ragInput.value.trim() : '';
+    const speaker = ragSpeaker ? ragSpeaker.value : '';
     if (!question || !supabaseClient) return;
 
     showLoading(true);
@@ -530,8 +533,13 @@ async function askQuestion() {
         // Step 1: Get embedding
         const embedding = await getEmbedding(question);
 
-        // Step 2: Search for similar sentences
-        const results = await searchSentences(embedding);
+        // Step 2: Search for similar sentences (optionally limited to one speaker)
+        const results = speaker
+            ? await searchSentencesBySpeaker(embedding, speaker)
+            : await searchSentences(embedding);
+        if (!results.length) {
+            throw new Error(speaker ? `No talks found for ${speaker}` : 'No matching talks found');
+        }
 
         // Step 3: Group by talk (with similarity scores and URLs)
         const topTalks = groupByTalk(results);
@@ -602,6 +610,20 @@ async function searchSentences(embedding) {
 
     const { data, error } = await supabaseClient.rpc('match_sentences', {
         query_embedding: embedding,
+        match_count: 20
+    });
+
+    if (error) throw new Error(`Database search failed: ${error.message}`);
+    return data;
+}
+
+// Search sentences from a single speaker (custom feature: "Ask a specific speaker")
+async function searchSentencesBySpeaker(embedding, speaker) {
+    if (!supabaseClient) throw new Error('Supabase not configured');
+
+    const { data, error } = await supabaseClient.rpc('match_sentences_by_speaker', {
+        query_embedding: embedding,
+        speaker_name: speaker,
         match_count: 20
     });
 

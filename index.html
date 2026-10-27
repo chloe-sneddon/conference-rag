@@ -126,6 +126,12 @@
                     <p class="panel-description">Get AI-generated answers based on conference talks. Requires all Edge
                         Functions deployed.</p>
                     <div class="panel-input">
+                        <select id="rag-speaker" aria-label="Limit answer to one speaker" disabled>
+                            <option value="">All speakers</option>
+                            <option value="Russell M. Nelson">Russell M. Nelson</option>
+                            <option value="Dallin H. Oaks">Dallin H. Oaks</option>
+                            <option value="Jeffrey R. Holland">Jeffrey R. Holland</option>
+                        </select>
                         <input type="text" id="rag-input" placeholder="Ask a question about conference talks..."
                             autocomplete="off" disabled />
                         <button id="rag-btn" class="btn-primary" disabled>Ask</button>
