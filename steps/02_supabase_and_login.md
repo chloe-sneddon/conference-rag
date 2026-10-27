@@ -36,8 +36,8 @@ You need values for **two config files**. Here's where to find each one:
 
 | Credential | Where to Find It |
 |-----------|-----------------|
-| `SUPABASE_URL` | Settings → API → Project URL |
-| `SUPABASE_ANON_KEY` | Settings → API → `anon` `public` key |
+| `SUPABASE_URL` | Project **Connect** dialog, or Integrations → Data API → API URL |
+| `SUPABASE_ANON_KEY` | Settings → API Keys → `anon` `public` key (legacy key) |
 
 #### config.secret.json (never commit!)
 
