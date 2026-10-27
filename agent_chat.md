@@ -377,3 +377,72 @@ ON sentence_embeddings USING hnsw (embedding vector_cosine_ops);
 **User:** append this session to agent_chat.md
 
 **Assistant:** [Appended this session to agent_chat.md.]
+
+**User:** resubmit agent_chat.md to agent transcript: conference rag on canvas then submit Conference Talk Retrieval Augmented Generation (RAG)
+
+**Assistant:** [Uploaded agent_chat.md to the Canvas assignment "Agent Transcript: Conference Talk RAG". It was submitted as attempt 2, marked late. Then checked the RAG deliverables: `embed-question` and `generate-answer` are both ACTIVE on Supabase; RAG_screenshot.pdf shows a cited answer to "Where can I turn for peace?"; generate-answer/, config.toml, and agent_chat.md are uncommitted; no custom feature or reflection exists yet.]
+
+RAG works: your screenshot shows a cited answer to "Where can I turn for peace?", and both edge functions are deployed. Two of the five required items are still missing, though: **a custom feature** (no app changes since the last push) and **the written reflection** (I couldn't find one anywhere).
+
+[Asked: "The RAG submission is missing the custom feature and the reflection answers. How do you want to submit?" Options: submit what exists now / wait and finish first / I have them elsewhere.]
+
+**User:** [Selected] Wait; I'll finish first
+
+**Assistant:** I've resubmitted the transcript. The RAG assignment isn't submitted yet, since you want to finish the custom feature and reflection first.
+
+- **Agent Transcript:** submitted as attempt 2. Canvas marks it late because the due date was Oct 23.
+- **Conference Talk RAG:** both edge functions are deployed and active, and RAG_screenshot.pdf shows a working answer with citations (the page is rotated sideways in the PDF; I'll straighten it in the final PDF). `generate-answer/`, the config.toml change, and agent_chat.md aren't committed yet.
+
+Still to do: (1) the custom feature, and (2) the reflection answers in your own words. When both are done, I'll make one PDF with the two URLs, the screenshot, your feature description, and your reflection, then submit it.
+
+**User:** Lets add the Ask a specific speaker**: Filter RAG answers to only use talks from a specific speaker. Make a drop down on rag that allows the user to select a speaker from the following list: "Russle M Nelson, Dallin H Oaks, Thomas S Monson"
+
+**Assistant:** [Queried how speaker names are stored. They have prefixes and a non-breaking space, e.g. "By President Russell M. Nelson" (27 talks) and "By President Dallin H. Oaks" / "Presented by President Dallin H. Oaks" (23 talks). There are no Monson rows. The data covers 2020–2025 only (426 talks; the scraper takes 5 years ending in 2025).]
+
+Two things came up. The names are stored with prefixes ("By President …", "Presented by President …") and a non-breaking space after the first name, so an exact match won't work. More importantly, **Thomas S. Monson has no talks in your data at all.** Your data only covers 2020–2025, and President Monson's last conference talks were in 2017, so selecting him would always return "no talks found."
+
+[Asked what to use in Monson's place. Options: Henry B. Eyring (recommended), Jeffrey R. Holland, just Nelson and Oaks, or scrape Monson's older talks.]
+
+**User:** [Selected] Swap in Jeffrey R. Holland
+
+**Assistant:** [Confirmed Holland has talks ("By Elder Jeffrey R. Holland" / "By President Jeffrey R. Holland"). Read the RAG panel HTML, askQuestion(), setSearchReady(), and the input styles.]
+
+Filtering the existing top-20 results wouldn't work: most of those 20 sentences come from other speakers. And putting a `WHERE` on the HNSW index search drops matches, because pgvector filters only after the approximate search. So the new function does an exact search over just that speaker's sentences, which is roughly 1,000–2,000 rows.
+
+[Created the SQL function `match_sentences_by_speaker(query_embedding, speaker_name, match_count)` in the database. Tested it as the `authenticated` role: 20 rows each for Nelson (9 talks), Oaks (11 talks), and Holland (8 talks), with 0 rows from the wrong speaker; about 1.4s on the first call and about 82ms after. Edited index.html (the dropdown), app.js (`searchSentencesBySpeaker()` and the speaker branch in `askQuestion()`), styles.css (dropdown styling and the mobile layout), and scripts/01_create_schema.py (added the function).]
+
+I added the speaker dropdown to the RAG panel. It's live in your database but not on the website yet: GitHub Pages updates only when you push.
+
+- **Monson swap:** the list is **All speakers** (the default, which behaves exactly as before), **Russell M. Nelson**, **Dallin H. Oaks**, and **Jeffrey R. Holland**. Monson isn't in your 2020–2025 data. I also fixed "Russle" to "Russell".
+- **Tested in the database, logged-in role:** each speaker returns 20 sentences from 8–11 different talks, and none come from another speaker. A search takes about 1.4s the first time and about 80ms after that, well under the 8s limit.
+- **Not tested in the browser.** The site needs your login, so try it after you push.
+
+**What changed:**
+- **New database function, `match_sentences_by_speaker`:** I created it in your Supabase database and also added it to scripts/01_create_schema.py so your repo matches. Names are stored like "By President Russell M. Nelson" with a non-breaking space, so it ignores the prefix and the odd space when matching. It searches only that speaker's sentences and checks all of them rather than using the vector index; with the index, a speaker filter would leave fewer than 20 results, because pgvector filters only after its approximate search. Row Level Security still applies, so only logged-in users can search.
+- **index.html:** the dropdown, placed before the question box.
+- **app.js:** `askQuestion()` calls the new function when a speaker is selected. If nothing matches, it says so instead of breaking. The dropdown is enabled together with the RAG panel.
+- **styles.css:** the dropdown matches the text box, and goes full width on phones.
+
+To see it live, commit and push, then hard refresh the site, pick a speaker, and ask something like "What has he taught about prayer?" The sources listed should all be from that speaker.
+
+**User:** Ok, now lets walk through the questions in 07_make_it_yours.md and create a reflection.md file
+
+**Assistant:** The reflection is graded on your own understanding, so the answers need to be yours. I'll set up the file, give you prompts and facts from your app for each question, and help tighten what you write without writing it for you.
+
+[Created reflection.md with the repo and live site links at the top, a section for the custom feature, and one section per question, each with the question's prompts as a comment.]
+
+Let's start with **Question 1: Security Architecture.** It asks you to describe what protects each sensitive asset. Here are the four parts, with facts from your own app to use:
+
+**a) Why is the anon key safe to expose in `config.public.json`?** Your database settings for the anon key say: `sentence_embeddings` has an RLS policy that allows reads only to the `authenticated` role, and the `anon` role has a 3s statement timeout (logged-in users get 8s). So what can someone actually do if they only have the anon key?
+
+**b) What happens if someone gets the service role key?** That key is in `config.secret.json` and is only used by your Python scripts. What does the service role do with RLS policies, and what could an attacker do to your table?
+
+**c) How do Edge Functions protect the OpenAI key?** Where does `OPENAI_API_KEY` live: in the browser, or somewhere else? Look at what `embed-question` and `generate-answer` check before they ever call OpenAI.
+
+**d) What role does RLS play?** `page_views` and `sentence_embeddings` have different policies on purpose. What's the difference, and why?
+
+For the "diagram" part, a simple text list works, like `asset → what protects it`. Write your answers to a–d in chat, as rough as you like. I'll tell you what's right, what's missing, and anything inaccurate, and then you put the final version in the file.
+
+**User:** ok, update the agent_chat.md so its current
+
+**Assistant:** [Appended the turns since the last update to agent_chat.md.]
